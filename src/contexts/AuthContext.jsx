@@ -1,154 +1,101 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { toast } from '@/components/ui/use-toast';
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { toast } from '@/components/ui/use-toast'
+import { supabase } from '../supabaseClient'
 
-const AuthContext = createContext();
+const AuthContext = createContext()
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
-  return context;
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used within an AuthProvider')
+  return context
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  // Cargar usuario desde el backend
   useEffect(() => {
-    fetch('/api/user/profile')
-      .then(res => {
-        if (!res.ok) throw new Error('No session');
-        return res.json();
-      })
-      .then(data => {
-        setUser(data);
-        setIsAuthenticated(true);
-      })
-      .catch(() => {
-        setUser(null);
-        setIsAuthenticated(false);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data?.session?.user ?? null)
+      setLoading(false)
+    })
 
-  // Login desde backend
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => listener?.subscription?.unsubscribe()
+  }, [])
+
   const login = async (email, password) => {
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Login inválido');
-      }
-
-      const data = await res.json();
-      setUser(data);
-      setIsAuthenticated(true);
-
-      toast({
-        title: 'Inicio de sesión exitoso',
-        description: email,
-      });
-
-      return data;
-    } catch (error) {
+    if (error) {
       toast({
         title: 'Error de autenticación',
         description: error.message,
         variant: 'destructive',
-      });
-      return false;
+      })
+      throw error
     }
-  };
 
-  // Registro desde backend
-  const register = async (userData) => {
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      });
+    setUser(data.user)
+    toast({
+      title: 'Inicio de sesión exitoso',
+      description: email,
+    })
+  }
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Registro fallido');
-      }
+  const register = async ({ email, password }) => {
+    const { data, error } = await supabase.auth.signUp({ email, password })
 
-      const data = await res.json();
-      setUser(data);
-      setIsAuthenticated(true);
-
-      toast({
-        title: 'Registro exitoso',
-        description: 'Tu cuenta ha sido creada correctamente',
-      });
-
-      return data;
-    } catch (error) {
+    if (error) {
       toast({
         title: 'Error de registro',
         description: error.message,
         variant: 'destructive',
-      });
-      throw error;
+      })
+      throw error
     }
-  };
 
-  // Actualizar datos del perfil
-  const updateUser = async (updatedData) => {
-    try {
-      const res = await fetch('/api/user/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedData),
-      });
+    setUser(data.user)
+    toast({
+      title: 'Registro exitoso',
+      description: 'Tu cuenta ha sido creada correctamente',
+    })
+  }
 
-      if (!res.ok) throw new Error('No se pudo actualizar el perfil');
-      const updated = await res.json();
-      setUser(updated);
-
-      toast({
-        title: 'Perfil actualizado',
-        description: 'Los cambios se han guardado correctamente',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error al actualizar',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // Logout local (si usás token persistente deberías invalidarlo en backend)
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
     toast({
       title: 'Sesión cerrada',
       description: 'Has cerrado sesión exitosamente',
-    });
-  };
+    })
+  }
+
+  const updateUser = async (updatedData) => {
+    // Supabase Auth no permite actualizar todo, esto es un placeholder
+    toast({
+      title: '⚠️ No implementado',
+      description: 'Actualización de perfil no disponible en esta versión',
+      variant: 'destructive',
+    })
+  }
 
   const value = {
     user,
-    isAuthenticated,
+    isAuthenticated: !!user,
     loading,
     login,
     register,
     logout,
     updateUser,
-  };
+  }
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
