@@ -24,21 +24,22 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       alert('Las contraseñas no coinciden');
       return;
     }
 
     setLoading(true);
-    
+
     try {
+      // Solo email y password para Supabase Auth
       await register({
-        name: formData.name,
         email: formData.email,
-        password: formData.password,
-        referredBy: formData.referralCode || null
+        password: formData.password
       });
+
+      // Navegar al dashboard luego del registro
       navigate('/dashboard');
     } catch (error) {
       console.error('Register error:', error);
@@ -90,7 +91,6 @@ const RegisterPage = () => {
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="Tu nombre completo"
-                  required
                   className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-400"
                 />
               </div>
