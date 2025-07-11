@@ -5,9 +5,7 @@ const AuthContext = createContext();
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
 
@@ -16,145 +14,126 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Cargar usuario desde el backend
   useEffect(() => {
-    const storedUser = localStorage.getItem('cryptoinvest_user');
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
-      setUser(userData);
-      setIsAuthenticated(true);
-    }
-    setLoading(false);
+    fetch('/api/user/profile')
+      .then(res => {
+        if (!res.ok) throw new Error('No session');
+        return res.json();
+      })
+      .then(data => {
+        setUser(data);
+        setIsAuthenticated(true);
+      })
+      .catch(() => {
+        setUser(null);
+        setIsAuthenticated(false);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
+  // Login desde backend
   const login = async (email, password) => {
     try {
-      // Simular autenticación
-      const users = JSON.parse(localStorage.getItem('cryptoinvest_users') || '[]');
-      const foundUser = users.find(u => u.email === email && u.password === password);
-      
-      if (!foundUser) {
-        throw new Error('Credenciales inválidas');
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Login inválido');
       }
 
-      const userData = {
-        id: foundUser.id,
-        email: foundUser.email,
-        name: foundUser.name,
-        role: foundUser.role || 'user',
-        balance: foundUser.balance || 0,
-        referralCode: foundUser.referralCode,
-        referredBy: foundUser.referredBy,
-        createdAt: foundUser.createdAt
-      };
-
-      setUser(userData);
+      const data = await res.json();
+      setUser(data);
       setIsAuthenticated(true);
-      localStorage.setItem('cryptoinvest_user', JSON.stringify(userData));
-      
+
       toast({
-        title: "¡Bienvenido!",
-        description: "Has iniciado sesión exitosamente",
+        title: 'Inicio de sesión exitoso',
+        description: email,
       });
 
-      return userData;
+      return data;
     } catch (error) {
       toast({
-        title: "Error de autenticación",
+        title: 'Error de autenticación',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
-      throw error;
+      return false;
     }
   };
 
+  // Registro desde backend
   const register = async (userData) => {
     try {
-      const users = JSON.parse(localStorage.getItem('cryptoinvest_users') || '[]');
-      
-      // Verificar si el email ya existe
-      if (users.find(u => u.email === userData.email)) {
-        throw new Error('El email ya está registrado');
-      }
-
-      const newUser = {
-        id: Date.now().toString(),
-        ...userData,
-        balance: 0,
-        role: 'user',
-        referralCode: generateReferralCode(),
-        createdAt: new Date().toISOString()
-      };
-
-      users.push(newUser);
-      localStorage.setItem('cryptoinvest_users', JSON.stringify(users));
-
-      // Procesar referido si existe
-      if (userData.referredBy) {
-        const referrer = users.find(u => u.referralCode === userData.referredBy);
-        if (referrer) {
-          // Agregar bonus de referido
-          referrer.balance += 50; // $50 bonus por referido
-          localStorage.setItem('cryptoinvest_users', JSON.stringify(users));
-        }
-      }
-
-      const userForAuth = {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role,
-        balance: newUser.balance,
-        referralCode: newUser.referralCode,
-        referredBy: newUser.referredBy,
-        createdAt: newUser.createdAt
-      };
-
-      setUser(userForAuth);
-      setIsAuthenticated(true);
-      localStorage.setItem('cryptoinvest_user', JSON.stringify(userForAuth));
-
-      toast({
-        title: "¡Registro exitoso!",
-        description: "Tu cuenta ha sido creada correctamente",
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
       });
 
-      return userForAuth;
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Registro fallido');
+      }
+
+      const data = await res.json();
+      setUser(data);
+      setIsAuthenticated(true);
+
+      toast({
+        title: 'Registro exitoso',
+        description: 'Tu cuenta ha sido creada correctamente',
+      });
+
+      return data;
     } catch (error) {
       toast({
-        title: "Error de registro",
+        title: 'Error de registro',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
       throw error;
     }
   };
 
+  // Actualizar datos del perfil
+  const updateUser = async (updatedData) => {
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!res.ok) throw new Error('No se pudo actualizar el perfil');
+      const updated = await res.json();
+      setUser(updated);
+
+      toast({
+        title: 'Perfil actualizado',
+        description: 'Los cambios se han guardado correctamente',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error al actualizar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Logout local (si usás token persistente deberías invalidarlo en backend)
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('cryptoinvest_user');
     toast({
-      title: "Sesión cerrada",
-      description: "Has cerrado sesión exitosamente",
+      title: 'Sesión cerrada',
+      description: 'Has cerrado sesión exitosamente',
     });
-  };
-
-  const updateUser = (updatedData) => {
-    const newUserData = { ...user, ...updatedData };
-    setUser(newUserData);
-    localStorage.setItem('cryptoinvest_user', JSON.stringify(newUserData));
-    
-    // Actualizar en la lista de usuarios también
-    const users = JSON.parse(localStorage.getItem('cryptoinvest_users') || '[]');
-    const userIndex = users.findIndex(u => u.id === user.id);
-    if (userIndex !== -1) {
-      users[userIndex] = { ...users[userIndex], ...updatedData };
-      localStorage.setItem('cryptoinvest_users', JSON.stringify(users));
-    }
-  };
-
-  const generateReferralCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
   const value = {
@@ -164,7 +143,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    updateUser
+    updateUser,
   };
 
   return (
