@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
     })
   }
 
-  const register = async ({ email, password, name, referredBy }) => {
+ const register = async ({ email, password, name, referredBy }) => {
   const { data, error } = await supabase.auth.signUp({ email, password })
 
   if (error) {
@@ -61,7 +61,7 @@ export function AuthProvider({ children }) {
   const user = data.user
   setUser(user)
 
-  // Crear perfil en tabla `profiles`
+  // Crear perfil
   const { error: profileError } = await supabase.from('profiles').insert([
     {
       id: user.id,
@@ -71,19 +71,46 @@ export function AuthProvider({ children }) {
   ])
 
   if (profileError) {
-    toast({
-      title: 'Error al guardar perfil',
-      description: profileError.message,
-      variant: 'destructive',
-    })
     console.error('Error al guardar perfil:', profileError)
-  } else {
-    toast({
-      title: 'Registro exitoso',
-      description: 'Tu cuenta ha sido creada correctamente',
-    })
   }
+
+  // Crear saldo inicial
+  const { error: balanceError } = await supabase.from('balances').insert([
+    {
+      user_id: user.id,
+      balance: 0,
+      demo_balance: 10000
+    }
+  ])
+
+  if (balanceError) {
+    console.error('Error al crear balance:', balanceError)
+  }
+
+  toast({
+    title: 'Registro exitoso',
+    description: 'Tu cuenta ha sido creada correctamente',
+  })
 }
+export async function obtenerBalance(userId) {
+  const { data, error } = await supabase
+    .from('balances')
+    .select('balance, demo_balance')
+    .eq('user_id', userId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+export async function actualizarBalance(userId, nuevoBalance) {
+  const { error } = await supabase
+    .from('balances')
+    .update({ balance: nuevoBalance })
+    .eq('user_id', userId)
+
+  if (error) throw error
+}
+
 
 
   const logout = async () => {
