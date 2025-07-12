@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Wallet, 
-  Users, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Users,
   DollarSign,
   BarChart3,
   PieChart,
@@ -14,17 +14,24 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
+import TradesHistory from '@/components/trading/TradesHistory';
+import { obtenerHistorial } from '@/supabaseUtils';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { cryptoPrices, getInvestments, getReferrals } = useData();
   const [investments, setInvestments] = useState([]);
   const [referrals, setReferrals] = useState([]);
+  const [trades, setTrades] = useState([]);
 
   useEffect(() => {
     if (user) {
       setInvestments(getInvestments().filter(inv => inv.userId === user.id));
       setReferrals(getReferrals(user.id));
+
+      obtenerHistorial(user.id)
+        .then(setTrades)
+        .catch(err => console.error('Error al obtener trades:', err));
     }
   }, [user, getInvestments, getReferrals]);
 
@@ -68,7 +75,7 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        {/* Welcome Section */}
+        {/* Bienvenida */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -82,7 +89,7 @@ const Dashboard = () => {
           </p>
         </motion.div>
 
-        {/* Stats Grid */}
+        {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
@@ -111,9 +118,9 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Charts Section */}
+        {/* Precios e inversiones */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Crypto Prices */}
+          {/* Precios */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -161,7 +168,7 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Recent Investments */}
+          {/* Inversiones */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -211,7 +218,7 @@ const Dashboard = () => {
           </motion.div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Acciones rápidas */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -226,37 +233,46 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <a
-                  href="/plans"
-                  className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors"
-                >
+                <a href="/plans" className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors">
                   <Wallet className="h-8 w-8 text-green-400 mb-2" />
                   <span className="text-white text-sm font-medium">Invertir</span>
                 </a>
-                <a
-                  href="/trading"
-                  className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors"
-                >
+                <a href="/trading" className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors">
                   <TrendingUp className="h-8 w-8 text-blue-400 mb-2" />
                   <span className="text-white text-sm font-medium">Trading</span>
                 </a>
-                <a
-                  href="/referrals"
-                  className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors"
-                >
+                <a href="/referrals" className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors">
                   <Users className="h-8 w-8 text-purple-400 mb-2" />
                   <span className="text-white text-sm font-medium">Referidos</span>
                 </a>
-                <a
-                  href="/history"
-                  className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors"
-                >
+                <a href="/history" className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors">
                   <BarChart3 className="h-8 w-8 text-orange-400 mb-2" />
                   <span className="text-white text-sm font-medium">Historial</span>
                 </a>
               </div>
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* Historial de trades desde Supabase */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1 }}
+        >
+          <TradesHistory
+            trades={trades.map(t => ({
+              ...t,
+              pair: t.pair || 'BTC/USDT',
+              priceAtExecution: t.price,
+              status: 'closed',
+              profit: t.type === 'buy' ? 0 : 0,
+              timestamp: t.timestamp,
+              amount: t.amount
+            }))}
+            cryptoPrices={cryptoPrices}
+            closeTrade={() => {}}
+          />
         </motion.div>
       </div>
     </Layout>
