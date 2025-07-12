@@ -125,7 +125,7 @@ export async function actualizarBalance(userId, nuevoBalance) {
   const updateUser = async (updatedData) => {
     // Supabase Auth no permite actualizar todo, esto es un placeholder
     toast({
-      title: '⚠️ No implementado',
+      title:'No implementado',
       description: 'Actualizacion de perfil no disponible en esta version',
       variant: 'destructive',
     })
