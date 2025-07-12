@@ -46,24 +46,45 @@ export function AuthProvider({ children }) {
     })
   }
 
-  const register = async ({ email, password }) => {
-    const { data, error } = await supabase.auth.signUp({ email, password })
+  const register = async ({ email, password, name, referredBy }) => {
+  const { data, error } = await supabase.auth.signUp({ email, password })
 
-    if (error) {
-      toast({
-        title: 'Error de registro',
-        description: error.message,
-        variant: 'destructive',
-      })
-      throw error
+  if (error) {
+    toast({
+      title: 'Error de registro',
+      description: error.message,
+      variant: 'destructive',
+    })
+    throw error
+  }
+
+  const user = data.user
+  setUser(user)
+
+  // Crear perfil en tabla `profiles`
+  const { error: profileError } = await supabase.from('profiles').insert([
+    {
+      id: user.id,
+      name,
+      referred_by: referredBy || null
     }
+  ])
 
-    setUser(data.user)
+  if (profileError) {
+    toast({
+      title: 'Error al guardar perfil',
+      description: profileError.message,
+      variant: 'destructive',
+    })
+    console.error('Error al guardar perfil:', profileError)
+  } else {
     toast({
       title: 'Registro exitoso',
       description: 'Tu cuenta ha sido creada correctamente',
     })
   }
+}
+
 
   const logout = async () => {
     await supabase.auth.signOut()
