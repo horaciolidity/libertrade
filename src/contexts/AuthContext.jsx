@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
 
     if (error) {
       toast({
-        title: 'Error de autenticación',
+        title: 'Error de autenticacion',
         description: error.message,
         variant: 'destructive',
       })
@@ -41,7 +41,7 @@ export function AuthProvider({ children }) {
 
     setUser(data.user)
     toast({
-      title: 'Inicio de sesión exitoso',
+      title: 'Inicio de sesion exitoso',
       description: email,
     })
   }
@@ -117,8 +117,8 @@ export async function actualizarBalance(userId, nuevoBalance) {
     await supabase.auth.signOut()
     setUser(null)
     toast({
-      title: 'Sesión cerrada',
-      description: 'Has cerrado sesión exitosamente',
+      title: 'Sesion cerrada',
+      description: 'Has cerrado sesion exitosamente',
     })
   }
 
@@ -126,7 +126,7 @@ export async function actualizarBalance(userId, nuevoBalance) {
     // Supabase Auth no permite actualizar todo, esto es un placeholder
     toast({
       title: '⚠️ No implementado',
-      description: 'Actualización de perfil no disponible en esta versión',
+      description: 'Actualizacion de perfil no disponible en esta version',
       variant: 'destructive',
     })
   }
