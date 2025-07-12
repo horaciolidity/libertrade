@@ -1,10 +1,12 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Play, RefreshCw, Clock } from 'lucide-react';
+import React from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Play, RefreshCw, Clock } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { registrarOperacion } from '@/supabaseUtils'
 
 const TradingPanel = ({
   selectedPair,
@@ -14,14 +16,33 @@ const TradingPanel = ({
   tradeType,
   setTradeType,
   isTrading,
-  executeTrade,
-  resetBalance,
+  setIsTrading,
   cryptoPrices,
   tradeDuration,
-  setTradeDuration,
+  setTradeDuration
 }) => {
-  const currentCrypto = selectedPair.split('/')[0];
-  const currentPriceData = cryptoPrices[currentCrypto];
+  const { user } = useAuth()
+  const currentCrypto = selectedPair.split('/')[0]
+  const currentPriceData = cryptoPrices[currentCrypto]
+
+  const executeTrade = async () => {
+    if (!user || !tradeAmount || !currentPriceData) return
+
+    setIsTrading(true)
+    try {
+      await registrarOperacion({
+        userId: user.id,
+        type: tradeType,
+        amount: parseFloat(tradeAmount),
+        price: currentPriceData.price
+      })
+      console.log('Operación registrada correctamente')
+    } catch (err) {
+      console.error('Error al ejecutar operación:', err.message)
+    } finally {
+      setIsTrading(false)
+    }
+  }
 
   return (
     <Card className="crypto-card">
@@ -124,7 +145,7 @@ const TradingPanel = ({
         </div>
 
         <Button
-          onClick={resetBalance}
+          onClick={() => console.log('Función de resetBalance aún no conectada')}
           variant="outline"
           className="w-full border-slate-600 text-slate-300 hover:bg-slate-700"
         >
@@ -132,7 +153,7 @@ const TradingPanel = ({
         </Button>
       </CardContent>
     </Card>
-  );
-};
+  )
+}
 
-export default TradingPanel;
+export default TradingPanel
