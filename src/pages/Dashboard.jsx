@@ -6,66 +6,97 @@ import {
   Wallet,
   Users,
   DollarSign,
-  BarChart3,
-  PieChart,
   Activity
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { useData } from '@/contexts/DataContext';
+import { supabase } from '@/supabaseClient';
 import TradesHistory from '@/components/trading/TradesHistory';
-import { obtenerHistorial } from '@/supabaseUtils';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { cryptoPrices, getReferrals, userData } = useData();
-  const [investments, setInvestments] = useState([]);
+  const [cryptoPrices, setCryptoPrices] = useState({});
+  const [profile, setProfile] = useState(null);
+  const [balance, setBalance] = useState({ balance: 0, demo_balance: 0 });
   const [referrals, setReferrals] = useState([]);
   const [trades, setTrades] = useState([]);
 
   useEffect(() => {
-    if (user) {
-      setInvestments([]); // ← cambiar cuando integres Supabase para inversiones reales
-      getReferrals(user.id).then(setReferrals).catch(console.error);
+    if (!user) return;
 
-      obtenerHistorial(user.id)
-        .then(setTrades)
-        .catch(err => console.error('Error al obtener trades:', err));
-    }
-  }, [user, getReferrals]);
+    // Cargar perfil del usuario
+    const fetchData = async () => {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-  const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
-  const totalEarnings = investments.reduce((sum, inv) => {
-    const daysPassed = Math.floor((Date.now() - new Date(inv.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-    return sum + (inv.amount * (inv.dailyReturn / 100) * Math.min(daysPassed, inv.duration));
-  }, 0);
+      setProfile(profileData);
+
+      const { data: balanceData } = await supabase
+        .from('balances')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (balanceData) setBalance(balanceData);
+
+      const { data: referralsData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('referred_by', user.id);
+
+      setReferrals(referralsData || []);
+
+      const { data: tradesData } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('timestamp', { ascending: false });
+
+      setTrades(tradesData || []);
+    };
+
+    fetchData();
+  }, [user]);
+
+  // Simulación de precios
+  useEffect(() => {
+    const fakePrices = {
+      BTC: { price: 29100.55, change: 2.34 },
+      ETH: { price: 1822.14, change: -1.12 },
+      USDT: { price: 1.0001, change: 0.01 }
+    };
+    setCryptoPrices(fakePrices);
+  }, []);
 
   const stats = [
     {
       title: 'Saldo Total',
-      value: `${(userData?.balance || 0).toFixed(2)}`,
+      value: `$${balance.balance.toFixed(2)}`,
       icon: Wallet,
       color: 'text-green-400',
       bgColor: 'bg-green-500/10'
     },
     {
-      title: 'Total Invertido',
-      value: `${totalInvested.toFixed(2)}`,
+      title: 'Saldo Demo',
+      value: `$${balance.demo_balance.toFixed(2)}`,
       icon: DollarSign,
       color: 'text-blue-400',
       bgColor: 'bg-blue-500/10'
     },
     {
-      title: 'Ganancias',
-      value: `${totalEarnings.toFixed(2)}`,
+      title: 'Operaciones',
+      value: `${trades.length}`,
       icon: TrendingUp,
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10'
     },
     {
       title: 'Referidos',
-      value: referrals.length.toString(),
+      value: `${referrals.length}`,
       icon: Users,
       color: 'text-orange-400',
       bgColor: 'bg-orange-500/10'
@@ -75,17 +106,13 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
           <h1 className="text-3xl font-bold text-white mb-2">
-            ¡Bienvenido de vuelta, {userData?.name || 'Usuario'}!
+            ¡Bienvenido de vuelta, {profile?.name || 'Usuario'}!
           </h1>
           <p className="text-slate-300">
             ID: <span className="text-white">{user?.id}</span><br />
-            Te refirió: {userData?.referred_by || 'Nadie'}
+            Te refirió: {profile?.referred_by || 'Nadie'}
           </p>
         </motion.div>
 
@@ -117,12 +144,7 @@ const Dashboard = () => {
           })}
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-        >
-          {/* Precios */}
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.4 }}>
           <Card className="crypto-card">
             <CardHeader>
               <CardTitle className="text-white flex items-center">
@@ -148,11 +170,7 @@ const Dashboard = () => {
                         ${data.price.toFixed(crypto === 'USDT' ? 4 : 2)}
                       </div>
                       <div className={`text-sm flex items-center ${data.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {data.change >= 0 ? (
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3 mr-1" />
-                        )}
+                        {data.change >= 0 ? <TrendingUp className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
                         {Math.abs(data.change).toFixed(2)}%
                       </div>
                     </div>
@@ -163,22 +181,9 @@ const Dashboard = () => {
           </Card>
         </motion.div>
 
-        {/* Más secciones: inversiones activas, acciones rápidas, historial de trades */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 1 }}>
           <TradesHistory
-            trades={trades.map(t => ({
-              ...t,
-              pair: t.pair || 'BTC/USDT',
-              priceAtExecution: t.price,
-              status: 'closed',
-              profit: t.type === 'buy' ? 0 : 0,
-              timestamp: t.timestamp,
-              amount: t.amount
-            }))}
+            trades={trades}
             cryptoPrices={cryptoPrices}
             closeTrade={() => {}}
           />
