@@ -73,3 +73,25 @@ export async function obtenerPerfil(userId) {
   return data;
 }
 
+export async function obtenerDatosUsuario(userId) {
+  const { data: perfil, error: perfilError } = await supabase
+    .from('profiles')
+    .select('name, referred_by')
+    .eq('id', userId)
+    .single();
+
+  const { data: saldos, error: saldosError } = await supabase
+    .from('balances')
+    .select('balance, demo_balance')
+    .eq('user_id', userId)
+    .single();
+
+  if (perfilError || saldosError) throw perfilError || saldosError;
+
+  return {
+    name: perfil?.name,
+    referred_by: perfil?.referred_by,
+    balance: saldos?.balance,
+    demo_balance: saldos?.demo_balance
+  };
+}
