@@ -72,7 +72,33 @@ export async function obtenerPerfil(userId) {
   if (error) throw error;
   return data;
 }
+// Obtener inversiones del usuario actual
+export async function obtenerInversiones(userId) {
+  const { data, error } = await supabase
+    .from('investments')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
+  if (error) throw error;
+  return data;
+}
+
+// Agregar nueva inversión
+export async function agregarInversion({ userId, planName, amount, dailyReturn, duration }) {
+  const { error } = await supabase
+    .from('investments')
+    .insert({
+      user_id: userId,
+      plan_name: planName,
+      amount,
+      daily_return: dailyReturn,
+      duration,
+      status: 'active'
+    });
+
+  if (error) throw error;
+}
 export async function obtenerDatosUsuario(userId) {
   const { data: perfil, error: perfilError } = await supabase
     .from('profiles')
