@@ -63,3 +63,13 @@ export async function obtenerHistorial(userId) {
   if (error) throw error
   return data
 }
+export async function obtenerPerfil(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('name, referred_by')
+    .eq('id', userId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
