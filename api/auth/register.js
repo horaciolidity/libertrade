@@ -1,4 +1,3 @@
-
 // api/auth/register.js
 import { supabase } from '../../src/supabaseClient';
 
@@ -30,7 +29,7 @@ export default async function handler(req, res) {
     const { data: refData, error: refError } = await supabase
       .from('profiles')
       .select('id')
-      .eq('id', referralCode) // suponiendo que el código es el UUID del usuario que refirió
+      .eq('id', referralCode)
       .single();
 
     if (!refError && refData) {
@@ -49,7 +48,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Usuario creado, pero falló el perfil: ' + profileError.message });
   }
 
-  // 4. Insertar saldos: demo + real (si fue referido, le damos bono)
+  // 4. Crear saldo inicial con bono
   const bonoReal = referredByUserId ? 10 : 0;
 
   const { error: balanceError } = await supabase.from('balances').insert({
@@ -62,7 +61,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Perfil creado, pero falló crear saldos: ' + balanceError.message });
   }
 
-  // 5. Si fue referido, pagar al referente también
+  // 5. Pagarle al referente si existe
   if (referredByUserId) {
     const { data: currentReferrerBalance, error: refBalErr } = await supabase
       .from('balances')
@@ -71,7 +70,7 @@ export default async function handler(req, res) {
       .single();
 
     if (!refBalErr && currentReferrerBalance) {
-      const nuevoSaldo = currentReferrerBalance.balance + 5; // paga $5 al que refirió
+      const nuevoSaldo = currentReferrerBalance.balance + 5;
       await supabase
         .from('balances')
         .update({ balance: nuevoSaldo })
