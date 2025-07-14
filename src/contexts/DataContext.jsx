@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
+import { useAuth } from './AuthContext';
+import { obtenerDatosUsuario } from '../supabaseUtils';
 
 const DataContext = createContext();
 
@@ -11,6 +14,7 @@ export function useData() {
 }
 
 export function DataProvider({ children }) {
+  const { user } = useAuth();
   const [cryptoPrices, setCryptoPrices] = useState({
     BTC: { price: 45000, change: 2.5, history: [] },
     ETH: { price: 3200, change: -1.2, history: [] },
@@ -58,6 +62,16 @@ export function DataProvider({ children }) {
     }
   ]);
 
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      obtenerDatosUsuario(user.id)
+        .then((info) => setUserData(info))
+        .catch(console.error);
+    }
+  }, [user]);
+
   useEffect(() => {
     const initialHistoryLength = 60;
     const initialPrices = { ...cryptoPrices };
@@ -78,9 +92,9 @@ export function DataProvider({ children }) {
       setCryptoPrices(prev => {
         const updated = { ...prev };
         Object.keys(updated).forEach(crypto => {
-          const change = (Math.random() - 0.5) * 2; // -1% a +1%
+          const change = (Math.random() - 0.5) * 2;
           const newPrice = Math.max(0.01, updated[crypto].price * (1 + change / 100));
-          const newHistory = [...updated[crypto].history, { time: Date.now(), value: newPrice }].slice(-100); // Keep last 100 points
+          const newHistory = [...updated[crypto].history, { time: Date.now(), value: newPrice }].slice(-100);
           updated[crypto] = {
             price: newPrice,
             change: change,
@@ -94,54 +108,25 @@ export function DataProvider({ children }) {
     return () => clearInterval(interval);
   }, []);
 
-  const getInvestments = () => {
-    return JSON.parse(localStorage.getItem('cryptoinvest_investments') || '[]');
-  };
+  // Función de referidos desde Supabase
+  const getReferrals = async (userId) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('referred_by', userId);
 
-  const addInvestment = (investment) => {
-    const investments = getInvestments();
-    const newInvestment = {
-      id: Date.now().toString(),
-      ...investment,
-      createdAt: new Date().toISOString(),
-      status: 'active'
-    };
-    investments.push(newInvestment);
-    localStorage.setItem('cryptoinvest_investments', JSON.stringify(investments));
-    return newInvestment;
-  };
+    if (error) {
+      console.error('Error al obtener referidos:', error.message);
+      return [];
+    }
 
-  const getTransactions = () => {
-    return JSON.parse(localStorage.getItem('cryptoinvest_transactions') || '[]');
-  };
-
-  const addTransaction = (transaction) => {
-    const transactions = getTransactions();
-    const newTransaction = {
-      id: Date.now().toString(),
-      ...transaction,
-      createdAt: new Date().toISOString()
-    };
-    transactions.push(newTransaction);
-    localStorage.setItem('cryptoinvest_transactions', JSON.stringify(transactions));
-    return newTransaction;
-  };
-
-  const getReferrals = (userId) => {
-    const users = JSON.parse(localStorage.getItem('cryptoinvest_users') || '[]');
-    const user = users.find(u => u.id === userId);
-    if (!user) return [];
-    
-    return users.filter(u => u.referredBy === user.referralCode);
+    return data;
   };
 
   const value = {
     cryptoPrices,
     investmentPlans,
-    getInvestments,
-    addInvestment,
-    getTransactions,
-    addTransaction,
+    userData,
     getReferrals
   };
 
