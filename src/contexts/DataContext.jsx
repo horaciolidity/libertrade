@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from './AuthContext';
-import { obtenerDatosUsuario } from '../supabaseUtils';
 
 const DataContext = createContext();
 
@@ -15,6 +14,7 @@ export function useData() {
 
 export function DataProvider({ children }) {
   const { user } = useAuth();
+
   const [cryptoPrices, setCryptoPrices] = useState({
     BTC: { price: 45000, change: 2.5, history: [] },
     ETH: { price: 3200, change: -1.2, history: [] },
@@ -62,16 +62,6 @@ export function DataProvider({ children }) {
     }
   ]);
 
-  const [userData, setUserData] = useState(null);
-
-  useEffect(() => {
-    if (user) {
-      obtenerDatosUsuario(user.id)
-        .then((info) => setUserData(info))
-        .catch(console.error);
-    }
-  }, [user]);
-
   useEffect(() => {
     const initialHistoryLength = 60;
     const initialPrices = { ...cryptoPrices };
@@ -108,7 +98,7 @@ export function DataProvider({ children }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Función de referidos desde Supabase
+  // Obtener referidos reales desde Supabase
   const getReferrals = async (userId) => {
     const { data, error } = await supabase
       .from('profiles')
@@ -126,7 +116,6 @@ export function DataProvider({ children }) {
   const value = {
     cryptoPrices,
     investmentPlans,
-    userData,
     getReferrals
   };
 
