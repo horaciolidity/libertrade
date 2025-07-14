@@ -34,10 +34,12 @@ const RegisterPage = () => {
 
     try {
       // Solo email y password para Supabase Auth
-      await register({
-        email: formData.email,
-        password: formData.password
-      });
+     await register({
+  email: formData.email,
+  password: formData.password,
+  name: formData.name,
+  referralCode: formData.referralCode
+});
 
       // Navegar al dashboard luego del registro
       navigate('/dashboard');
