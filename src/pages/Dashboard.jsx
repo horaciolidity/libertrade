@@ -19,21 +19,21 @@ import { obtenerHistorial } from '@/supabaseUtils';
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { cryptoPrices, getInvestments, getReferrals } = useData();
+  const { cryptoPrices, getReferrals, userData } = useData();
   const [investments, setInvestments] = useState([]);
   const [referrals, setReferrals] = useState([]);
   const [trades, setTrades] = useState([]);
 
   useEffect(() => {
     if (user) {
-      setInvestments(getInvestments().filter(inv => inv.userId === user.id));
-      setReferrals(getReferrals(user.id));
+      setInvestments([]); // ← cambiar cuando integres Supabase para inversiones reales
+      getReferrals(user.id).then(setReferrals).catch(console.error);
 
       obtenerHistorial(user.id)
         .then(setTrades)
         .catch(err => console.error('Error al obtener trades:', err));
     }
-  }, [user, getInvestments, getReferrals]);
+  }, [user, getReferrals]);
 
   const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
   const totalEarnings = investments.reduce((sum, inv) => {
@@ -44,7 +44,7 @@ const Dashboard = () => {
   const stats = [
     {
       title: 'Saldo Total',
-      value: `${(user?.balance || 0).toFixed(2)}`,
+      value: `${(userData?.balance || 0).toFixed(2)}`,
       icon: Wallet,
       color: 'text-green-400',
       bgColor: 'bg-green-500/10'
@@ -75,21 +75,20 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        {/* Bienvenida */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
           <h1 className="text-3xl font-bold text-white mb-2">
-            ¡Bienvenido de vuelta, {user?.name}!
+            ¡Bienvenido de vuelta, {userData?.name || 'Usuario'}!
           </h1>
           <p className="text-slate-300">
-            Aquí tienes un resumen de tu actividad de inversión
+            ID: <span className="text-white">{user?.id}</span><br />
+            Te refirió: {userData?.referred_by || 'Nadie'}
           </p>
         </motion.div>
 
-        {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
@@ -118,143 +117,53 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Precios e inversiones */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Precios */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-          >
-            <Card className="crypto-card">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Activity className="h-5 w-5 mr-2 text-green-400" />
-                  Precios en Tiempo Real
-                </CardTitle>
-                <CardDescription className="text-slate-300">
-                  Precios actuales de criptomonedas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {Object.entries(cryptoPrices).map(([crypto, data]) => (
-                    <div key={crypto} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center mr-3">
-                          <span className="text-white text-xs font-bold">{crypto}</span>
-                        </div>
-                        <span className="text-white font-medium">{crypto}</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-white font-semibold">
-                          ${data.price.toFixed(crypto === 'USDT' ? 4 : 2)}
-                        </div>
-                        <div className={`text-sm flex items-center ${
-                          data.change >= 0 ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                          {data.change >= 0 ? (
-                            <TrendingUp className="h-3 w-3 mr-1" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3 mr-1" />
-                          )}
-                          {Math.abs(data.change).toFixed(2)}%
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Inversiones */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-          >
-            <Card className="crypto-card">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <PieChart className="h-5 w-5 mr-2 text-blue-400" />
-                  Inversiones Activas
-                </CardTitle>
-                <CardDescription className="text-slate-300">
-                  Tus inversiones más recientes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {investments.length > 0 ? (
-                  <div className="space-y-4">
-                    {investments.slice(0, 5).map((investment) => (
-                      <div key={investment.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
-                        <div>
-                          <div className="text-white font-medium">{investment.planName}</div>
-                          <div className="text-slate-400 text-sm">
-                            {new Date(investment.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-white font-semibold">
-                            ${investment.amount.toFixed(2)}
-                          </div>
-                          <div className="text-green-400 text-sm">
-                            {investment.dailyReturn}% diario
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <BarChart3 className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400">No tienes inversiones activas</p>
-                    <p className="text-slate-500 text-sm">Comienza invirtiendo en nuestros planes</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-
-        {/* Acciones rápidas */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
         >
+          {/* Precios */}
           <Card className="crypto-card">
             <CardHeader>
-              <CardTitle className="text-white">Acciones Rápidas</CardTitle>
+              <CardTitle className="text-white flex items-center">
+                <Activity className="h-5 w-5 mr-2 text-green-400" />
+                Precios en Tiempo Real
+              </CardTitle>
               <CardDescription className="text-slate-300">
-                Accede rápidamente a las funciones principales
+                Precios actuales de criptomonedas
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <a href="/plans" className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors">
-                  <Wallet className="h-8 w-8 text-green-400 mb-2" />
-                  <span className="text-white text-sm font-medium">Invertir</span>
-                </a>
-                <a href="/trading" className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors">
-                  <TrendingUp className="h-8 w-8 text-blue-400 mb-2" />
-                  <span className="text-white text-sm font-medium">Trading</span>
-                </a>
-                <a href="/referrals" className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors">
-                  <Users className="h-8 w-8 text-purple-400 mb-2" />
-                  <span className="text-white text-sm font-medium">Referidos</span>
-                </a>
-                <a href="/history" className="flex flex-col items-center p-4 bg-slate-800/50 rounded-lg hover:bg-slate-700/50 transition-colors">
-                  <BarChart3 className="h-8 w-8 text-orange-400 mb-2" />
-                  <span className="text-white text-sm font-medium">Historial</span>
-                </a>
+              <div className="space-y-4">
+                {Object.entries(cryptoPrices).map(([crypto, data]) => (
+                  <div key={crypto} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-white text-xs font-bold">{crypto}</span>
+                      </div>
+                      <span className="text-white font-medium">{crypto}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-white font-semibold">
+                        ${data.price.toFixed(crypto === 'USDT' ? 4 : 2)}
+                      </div>
+                      <div className={`text-sm flex items-center ${data.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {data.change >= 0 ? (
+                          <TrendingUp className="h-3 w-3 mr-1" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 mr-1" />
+                        )}
+                        {Math.abs(data.change).toFixed(2)}%
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Historial de trades desde Supabase */}
+        {/* Más secciones: inversiones activas, acciones rápidas, historial de trades */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
