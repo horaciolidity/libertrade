@@ -70,7 +70,7 @@ export default async function handler(req, res) {
       .single();
 
     if (!refBalErr && currentReferrerBalance) {
-      const nuevoSaldo = currentReferrerBalance.balance + 5;
+      const nuevoSaldo = Number(currentReferrerBalance.balance) + 5;
       await supabase
         .from('balances')
         .update({ balance: nuevoSaldo })
