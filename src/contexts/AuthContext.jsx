@@ -28,23 +28,24 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      toast({
-        title: 'Error de autenticación',
-        description: error.message,
-        variant: 'destructive',
-      });
-      throw error;
-    }
-
-    setUser(data.user);
+  if (error || !data.user) {
     toast({
-      title: 'Inicio de sesión exitoso',
-      description: email,
+      title: 'Error de autenticación',
+      description: error?.message || 'Credenciales inválidas',
+      variant: 'destructive',
     });
-  };
+    return { user: null, error };
+  }
+
+  setUser(data.user);
+  toast({
+    title: 'Inicio de sesión exitoso',
+    description: email,
+  });
+  return { user: data.user, error: null };
+};
 
   const register = async ({ email, password, name, referralCode }) => {
     const response = await fetch('/api/auth/register', {
