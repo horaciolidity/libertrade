@@ -19,18 +19,25 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      await login(formData.email, formData.password);
+  e.preventDefault();
+  setLoading(true);
+
+  try {
+    const res = await login(formData.email, formData.password);
+
+    if (res?.user) {
       navigate('/dashboard');
-    } catch (error) {
-      console.error('Login error:', error);
-    } finally {
-      setLoading(false);
+    } else {
+      alert('Credenciales incorrectas');
     }
-  };
+  } catch (error) {
+    console.error('Login error:', error);
+    alert('Error al iniciar sesión');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleChange = (e) => {
     setFormData({
