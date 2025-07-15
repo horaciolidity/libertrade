@@ -3,10 +3,12 @@ import { supabase } from '../../src/supabaseClient';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
+    console.warn("Método no permitido:", req.method);
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
   const { email, password, name, referralCode } = req.body;
+  console.log("📩 Registro iniciado:", email);
 
   // 1. Crear cuenta en Supabase Auth
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -15,17 +17,20 @@ export default async function handler(req, res) {
   });
 
   if (signUpError) {
+    console.error("❌ Error en Supabase Auth:", signUpError.message);
     return res.status(400).json({ error: signUpError.message });
   }
 
   const user = signUpData.user;
   if (!user) {
+    console.error("❌ No se obtuvo el usuario después de registrarse.");
     return res.status(400).json({ error: 'No se pudo crear el usuario' });
   }
 
   // 2. Buscar ID del usuario que refirió (si existe)
   let referredByUserId = null;
   if (referralCode) {
+    console.log("🔗 Buscando referido:", referralCode);
     const { data: refData, error: refError } = await supabase
       .from('profiles')
       .select('id')
@@ -34,6 +39,9 @@ export default async function handler(req, res) {
 
     if (!refError && refData) {
       referredByUserId = refData.id;
+      console.log("✅ Referido encontrado:", referredByUserId);
+    } else {
+      console.warn("⚠️ Referido no encontrado o error:", refError?.message);
     }
   }
 
@@ -45,8 +53,11 @@ export default async function handler(req, res) {
   });
 
   if (profileError) {
+    console.error("❌ Error al crear perfil:", profileError.message);
     return res.status(500).json({ error: 'Usuario creado, pero falló el perfil: ' + profileError.message });
   }
+
+  console.log("✅ Perfil creado correctamente");
 
   // 4. Crear saldo inicial con bono
   const bonoReal = referredByUserId ? 10 : 0;
@@ -58,8 +69,11 @@ export default async function handler(req, res) {
   });
 
   if (balanceError) {
+    console.error("❌ Error al crear balance:", balanceError.message);
     return res.status(500).json({ error: 'Perfil creado, pero falló crear saldos: ' + balanceError.message });
   }
+
+  console.log("💰 Balance creado. Bono real:", bonoReal);
 
   // 5. Pagarle al referente si existe
   if (referredByUserId) {
@@ -71,10 +85,18 @@ export default async function handler(req, res) {
 
     if (!refBalErr && currentReferrerBalance) {
       const nuevoSaldo = Number(currentReferrerBalance.balance) + 5;
-      await supabase
+      const { error: updateError } = await supabase
         .from('balances')
         .update({ balance: nuevoSaldo })
         .eq('user_id', referredByUserId);
+
+      if (updateError) {
+        console.warn("⚠️ Error al actualizar balance del referido:", updateError.message);
+      } else {
+        console.log("✅ Referido bonificado con +5");
+      }
+    } else {
+      console.warn("⚠️ No se pudo obtener el balance del referido:", refBalErr?.message);
     }
   }
 
