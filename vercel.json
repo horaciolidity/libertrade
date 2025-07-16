@@ -1,7 +1,10 @@
 {
+  "buildCommand": "chmod +x node_modules/.bin/vite && npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
-  ],
-  "buildCommand": "npm ci && npm run build",
-  "outputDirectory": "dist"
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
 }
