@@ -1,14 +1,4 @@
-import supabase from '../../src/supabaseAdmin'; // 👈 usa el cliente admin centralizado
-
-// ✅ Validamos que existan las variables de entorno
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("❌ Variables de entorno faltantes: Verifica SUPABASE_SERVICE_ROLE_KEY y NEXT_PUBLIC_SUPABASE_URL");
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import supabase from '../../src/supabaseAdmin' // Cliente admin centralizado
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -66,7 +56,7 @@ export default async function handler(req, res) {
       id: user.id,
       name: name || '',
       referred_by: referredByUserId,
-      referral_code: generateReferralCode(), // genera un código único
+      referral_code: generateReferralCode(),
     });
 
     if (profileError) {

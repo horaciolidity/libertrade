@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // 👈 service key privada
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export default supabaseAdmin;
+export default supabase; // usa el nombre genérico "supabase"
